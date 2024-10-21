@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import CustomerCreateView, CreateTokenView  # Adjust according to your view
+from .views import CustomerRegisterView, SetPasswordView, LoginView
 
 urlpatterns = [
-    path('create/', CustomerCreateView.as_view(), name='create-customer'),
-    path('token/', CreateTokenView.as_view(), name='token'),
+    path('register/', CustomerRegisterView.as_view(), name='register'),
+    path('set-password/', SetPasswordView.as_view(), name='set-password'),
+    path('login/', LoginView.as_view(), name='login'),
 ]

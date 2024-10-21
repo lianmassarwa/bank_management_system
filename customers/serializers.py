@@ -1,51 +1,52 @@
-from django.contrib.auth import authenticate
 from rest_framework import serializers
 from .models import Customer
-from django.contrib.auth.hashers import check_password
 
-class CustomerSerializer(serializers.ModelSerializer):
+class CustomerRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ['id', 'username', 'email', 'password', 'phone_number']
-        read_only_fields = ['id']
+        fields = ['id' , 'username', 'email', 'phone_number','bank_username']
+        read_only_fields = ['id', 'bank_username']
         extra_kwargs = {
             'username': {'required': True},
             'email': {'required': True},
             'phone_number': {'required': True},
-            'password': {
-                'write_only': True,
-                'min_length': 5
-            }
         }
 
     def create(self, validated_data):
-        password = validated_data.pop('password')  # Remove password from validated_data
+        # Create user without password first
         customer = Customer(**validated_data)
-        customer.set_password(password)  # Hash the password
+        customer.save()
+        return customer
+class SetPasswordSerializer(serializers.Serializer):
+    bank_username = serializers.CharField()
+    password = serializers.CharField(write_only=True, min_length=5)
+
+    def validate(self, data):
+        try:
+            customer = Customer.objects.get(bank_username=data['bank_username'])
+        except Customer.DoesNotExist:
+            raise serializers.ValidationError("Invalid bank username.")
+        data['customer'] = customer
+        return data
+
+    def save(self):
+        customer = self.validated_data['customer']
+        customer.set_password(self.validated_data['password'])
         customer.save()
         return customer
 
+from rest_framework import serializers
+from django.contrib.auth import authenticate
+
 class AuthTokenSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    password = serializers.CharField(
-        style={'input_type': 'password'},
-        trim_whitespace=False
-    )
+    bank_username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        email = attrs.get('email')
+        bank_username = attrs.get('bank_username')
         password = attrs.get('password')
-
-
-        #user = authenticate(email=email, password=password)
-
-        try:
-            user = Customer.objects.get(email=email)
-        except Customer.DoesNotExist:
-            raise serializers.ValidationError('Invalid credentials.')
-
-        if not user.check_password(password):
-            raise serializers.ValidationError('Invalid credentials.')
-
-        attrs['user'] = user  # Store the user object
+        user = authenticate(username=bank_username, password=password)
+        if not user:
+            raise serializers.ValidationError("Invalid credentials.")
+        attrs['user'] = user
         return attrs

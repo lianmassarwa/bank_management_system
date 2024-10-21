@@ -1,4 +1,6 @@
 from rest_framework import generics
+from rest_framework.views import APIView
+
 from .models import BankAccount
 from .serializers import BankAccountSerializer
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +13,18 @@ class BankAccountCreateView(generics.CreateAPIView):
     queryset = BankAccount.objects.all()
     serializer_class = BankAccountSerializer
 
+class AccountView(APIView):
+    serializer_class = BankAccountSerializer
+
+    def get(self, request):
+        return Response({'message': 'List of accounts'})
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
 class BankAccountCloseView(generics.UpdateAPIView):
     queryset = BankAccount.objects.all()
